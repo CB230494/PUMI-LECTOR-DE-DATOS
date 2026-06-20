@@ -118,10 +118,10 @@ def nombre_delegacion_desde_hoja(nombre_hoja):
 
 
 def clasificar_cumplimiento(porc):
-    if porc >= 0.40:
+    if porc >= 0.50:
         return "🟢 Bien"
-    elif porc >= 0.35:
-        return "🟠 Atención"
+    elif porc >= 0.45:
+        return "🟠 Medio"
     else:
         return "🔴 Crítico"
 
@@ -132,7 +132,7 @@ def color_por_nivel(nivel):
     if "🟢" in nivel or "Bien" in nivel:
         return COLOR_VERDE
 
-    if "🟠" in nivel or "Atención" in nivel:
+    if "🟠" in nivel or "Medio" in nivel:
         return COLOR_NARANJA
 
     return COLOR_ROJO
@@ -315,70 +315,17 @@ def generar_excel(df, nombre_hoja="Datos filtrados"):
             "border": 1
         })
 
-        formato_porcentaje = workbook.add_format({
-            "num_format": "0.00%",
-            "border": 1
-        })
+        formato_verde = workbook.add_format({"bg_color": COLOR_VERDE, "border": 1})
+        formato_naranja = workbook.add_format({"bg_color": COLOR_NARANJA, "border": 1})
+        formato_rojo = workbook.add_format({"bg_color": COLOR_ROJO, "border": 1})
 
-        formato_numero = workbook.add_format({
-            "num_format": "#,##0",
-            "border": 1
-        })
+        formato_verde_pct = workbook.add_format({"bg_color": COLOR_VERDE, "num_format": "0.00%", "border": 1})
+        formato_naranja_pct = workbook.add_format({"bg_color": COLOR_NARANJA, "num_format": "0.00%", "border": 1})
+        formato_rojo_pct = workbook.add_format({"bg_color": COLOR_ROJO, "num_format": "0.00%", "border": 1})
 
-        formato_texto = workbook.add_format({
-            "border": 1
-        })
-
-        formato_verde = workbook.add_format({
-            "bg_color": COLOR_VERDE,
-            "border": 1
-        })
-
-        formato_naranja = workbook.add_format({
-            "bg_color": COLOR_NARANJA,
-            "border": 1
-        })
-
-        formato_rojo = workbook.add_format({
-            "bg_color": COLOR_ROJO,
-            "border": 1
-        })
-
-        formato_verde_pct = workbook.add_format({
-            "bg_color": COLOR_VERDE,
-            "num_format": "0.00%",
-            "border": 1
-        })
-
-        formato_naranja_pct = workbook.add_format({
-            "bg_color": COLOR_NARANJA,
-            "num_format": "0.00%",
-            "border": 1
-        })
-
-        formato_rojo_pct = workbook.add_format({
-            "bg_color": COLOR_ROJO,
-            "num_format": "0.00%",
-            "border": 1
-        })
-
-        formato_verde_num = workbook.add_format({
-            "bg_color": COLOR_VERDE,
-            "num_format": "#,##0",
-            "border": 1
-        })
-
-        formato_naranja_num = workbook.add_format({
-            "bg_color": COLOR_NARANJA,
-            "num_format": "#,##0",
-            "border": 1
-        })
-
-        formato_rojo_num = workbook.add_format({
-            "bg_color": COLOR_ROJO,
-            "num_format": "#,##0",
-            "border": 1
-        })
+        formato_verde_num = workbook.add_format({"bg_color": COLOR_VERDE, "num_format": "#,##0", "border": 1})
+        formato_naranja_num = workbook.add_format({"bg_color": COLOR_NARANJA, "num_format": "#,##0", "border": 1})
+        formato_rojo_num = workbook.add_format({"bg_color": COLOR_ROJO, "num_format": "#,##0", "border": 1})
 
         for col_num, value in enumerate(df.columns.values):
             worksheet.write(0, col_num, value, formato_titulo)
@@ -516,7 +463,6 @@ def generar_pdf(df, titulo="Reporte de datos filtrados"):
             estilos.append(("BACKGROUND", (0, i), (-1, i), colors.HexColor(color_fila)))
 
     tabla.setStyle(TableStyle(estilos))
-
     elementos.append(tabla)
 
     if len(df) > 80:
@@ -530,7 +476,6 @@ def generar_pdf(df, titulo="Reporte de datos filtrados"):
         )
 
     doc.build(elementos)
-
     salida.seek(0)
     return salida
 
@@ -611,10 +556,7 @@ try:
             if limpiar_texto(x)
         ])
 
-        filtro_delegacion = st.multiselect(
-            "Delegación",
-            delegaciones
-        )
+        filtro_delegacion = st.multiselect("Delegación", delegaciones)
 
     with col2:
         if "Programa" in df.columns:
@@ -622,11 +564,7 @@ try:
                 x for x in df["Programa"].dropna().unique()
                 if limpiar_texto(x)
             ])
-
-            filtro_programa = st.multiselect(
-                "Programa",
-                programas
-            )
+            filtro_programa = st.multiselect("Programa", programas)
         else:
             filtro_programa = []
 
@@ -635,83 +573,51 @@ try:
                 x for x in df["Región / Hoja"].dropna().unique()
                 if limpiar_texto(x)
             ])
-
-            filtro_region = st.multiselect(
-                "Región",
-                regiones
-            )
+            filtro_region = st.multiselect("Región", regiones)
         else:
             filtro_region = []
 
     with col3:
-        filtro_estado = st.multiselect(
-            "Estado",
-            sorted(df["Estado"].dropna().unique())
-        )
-
-        filtro_nivel = st.multiselect(
-            "Nivel cumplimiento",
-            sorted(df["Nivel cumplimiento"].dropna().unique())
-        )
+        filtro_estado = st.multiselect("Estado", sorted(df["Estado"].dropna().unique()))
+        filtro_nivel = st.multiselect("Nivel cumplimiento", sorted(df["Nivel cumplimiento"].dropna().unique()))
 
     with col4:
-        texto_busqueda = st.text_input(
-            "Buscar texto",
-            placeholder="Actividad, cantón, provincia..."
-        )
+        texto_busqueda = st.text_input("Buscar texto", placeholder="Actividad, cantón, provincia...")
 
         if "Archivo origen" in df.columns:
             archivos_origen = sorted([
                 x for x in df["Archivo origen"].dropna().unique()
                 if limpiar_texto(x)
             ])
-
-            filtro_archivo = st.multiselect(
-                "Archivo origen",
-                archivos_origen
-            )
+            filtro_archivo = st.multiselect("Archivo origen", archivos_origen)
         else:
             filtro_archivo = []
 
     df_filtrado = df.copy()
 
     if filtro_delegacion:
-        df_filtrado = df_filtrado[
-            df_filtrado["Delegación"].isin(filtro_delegacion)
-        ]
+        df_filtrado = df_filtrado[df_filtrado["Delegación"].isin(filtro_delegacion)]
 
     if "Programa" in df_filtrado.columns and filtro_programa:
-        df_filtrado = df_filtrado[
-            df_filtrado["Programa"].isin(filtro_programa)
-        ]
+        df_filtrado = df_filtrado[df_filtrado["Programa"].isin(filtro_programa)]
 
     if "Región / Hoja" in df_filtrado.columns and filtro_region:
-        df_filtrado = df_filtrado[
-            df_filtrado["Región / Hoja"].isin(filtro_region)
-        ]
+        df_filtrado = df_filtrado[df_filtrado["Región / Hoja"].isin(filtro_region)]
 
     if filtro_estado:
-        df_filtrado = df_filtrado[
-            df_filtrado["Estado"].isin(filtro_estado)
-        ]
+        df_filtrado = df_filtrado[df_filtrado["Estado"].isin(filtro_estado)]
 
     if filtro_nivel:
-        df_filtrado = df_filtrado[
-            df_filtrado["Nivel cumplimiento"].isin(filtro_nivel)
-        ]
+        df_filtrado = df_filtrado[df_filtrado["Nivel cumplimiento"].isin(filtro_nivel)]
 
     if filtro_archivo:
-        df_filtrado = df_filtrado[
-            df_filtrado["Archivo origen"].isin(filtro_archivo)
-        ]
+        df_filtrado = df_filtrado[df_filtrado["Archivo origen"].isin(filtro_archivo)]
 
     if texto_busqueda:
         texto = texto_busqueda.upper().strip()
-
         mascara = df_filtrado.astype(str).apply(
             lambda col: col.str.upper().str.contains(texto, na=False)
         ).any(axis=1)
-
         df_filtrado = df_filtrado[mascara]
 
     columnas_meses_presentes = [
@@ -737,9 +643,7 @@ try:
             )
 
             if mostrar_solo_con_movimiento:
-                df_filtrado = df_filtrado[
-                    df_filtrado[meses_sel].sum(axis=1) > 0
-                ]
+                df_filtrado = df_filtrado[df_filtrado[meses_sel].sum(axis=1) > 0]
 
     st.subheader("📌 Resumen")
 
@@ -747,7 +651,6 @@ try:
     total_avance = df_filtrado["Avance"].sum()
     avance_global = total_avance / total_meta if total_meta else 0
     total_pendiente = df_filtrado["Pendiente"].sum()
-
     nivel_global = clasificar_cumplimiento(avance_global)
 
     m1, m2, m3, m4, m5 = st.columns(5)
@@ -769,21 +672,15 @@ try:
     vista = df_filtrado.copy()
 
     if "% Avance" in vista.columns:
-        vista["% Avance"] = vista["% Avance"].map(
-            lambda x: f"{x:.2%}"
-        )
+        vista["% Avance"] = vista["% Avance"].map(lambda x: f"{x:.2%}")
 
     for col in ["Meta", "Avance", "Pendiente"]:
         if col in vista.columns:
-            vista[col] = vista[col].map(
-                lambda x: f"{x:,.0f}"
-            )
+            vista[col] = vista[col].map(lambda x: f"{x:,.0f}")
 
     for mes in [m.title() for m in MESES]:
         if mes in vista.columns:
-            vista[mes] = vista[mes].map(
-                lambda x: f"{x:,.0f}"
-            )
+            vista[mes] = vista[mes].map(lambda x: f"{x:,.0f}")
 
     st.dataframe(
         vista.style.apply(color_cumplimiento, axis=1),
@@ -844,9 +741,7 @@ try:
         "Pendiente": "sum"
     })
 
-    resumen_nivel = resumen_nivel.rename(
-        columns={"Delegación": "Registros"}
-    )
+    resumen_nivel = resumen_nivel.rename(columns={"Delegación": "Registros"})
 
     if not resumen_nivel.empty:
         resumen_nivel["% Avance"] = resumen_nivel.apply(
@@ -855,16 +750,11 @@ try:
         )
 
         resumen_nivel_vista = resumen_nivel.copy()
-
-        resumen_nivel_vista["% Avance"] = resumen_nivel_vista["% Avance"].map(
-            lambda x: f"{x:.2%}"
-        )
+        resumen_nivel_vista["% Avance"] = resumen_nivel_vista["% Avance"].map(lambda x: f"{x:.2%}")
 
         for col in ["Meta", "Avance", "Pendiente", "Registros"]:
             if col in resumen_nivel_vista.columns:
-                resumen_nivel_vista[col] = resumen_nivel_vista[col].map(
-                    lambda x: f"{x:,.0f}"
-                )
+                resumen_nivel_vista[col] = resumen_nivel_vista[col].map(lambda x: f"{x:,.0f}")
 
         st.dataframe(
             resumen_nivel_vista,
