@@ -11,6 +11,9 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 
+# =========================================================
+# CONFIGURACIÓN GENERAL
+# =========================================================
 st.set_page_config(
     page_title="Lector de Avances PAO / Programas",
     page_icon="📊",
@@ -25,6 +28,10 @@ MESES = [
 COLOR_AZUL = "#0B1F3A"
 COLOR_DORADO = "#C9A227"
 COLOR_GRIS = "#F2F4F7"
+
+COLOR_VERDE = "#DCFCE7"
+COLOR_NARANJA = "#FFEDD5"
+COLOR_ROJO = "#FEE2E2"
 
 st.markdown(
     f"""
@@ -52,7 +59,9 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-
+# =========================================================
+# FUNCIONES BASE
+# =========================================================
 def limpiar_texto(valor):
     if pd.isna(valor):
         return ""
@@ -117,6 +126,21 @@ def clasificar_cumplimiento(porc):
         return "🔴 Crítico"
 
 
+def color_por_nivel(nivel):
+    nivel = limpiar_texto(nivel)
+
+    if "🟢" in nivel or "Bien" in nivel:
+        return COLOR_VERDE
+
+    if "🟠" in nivel or "Atención" in nivel:
+        return COLOR_NARANJA
+
+    return COLOR_ROJO
+
+
+# =========================================================
+# LECTURA DEL EXCEL REGIONAL / DETALLADO
+# =========================================================
 def leer_detalle_regional(archivo):
     xl = pd.ExcelFile(archivo)
     registros = []
@@ -193,6 +217,9 @@ def leer_detalle_regional(archivo):
     return pd.DataFrame(registros)
 
 
+# =========================================================
+# LECTURA DEL EXCEL NACIONAL / RESUMEN
+# =========================================================
 def leer_resumen_nacional(archivo):
     xl = pd.ExcelFile(archivo)
     registros = []
@@ -267,6 +294,9 @@ def leer_resumen_nacional(archivo):
     return pd.DataFrame(registros)
 
 
+# =========================================================
+# EXPORTACIÓN EXCEL CON COLORES
+# =========================================================
 def generar_excel(df, nombre_hoja="Datos filtrados"):
     salida = io.BytesIO()
 
@@ -285,20 +315,105 @@ def generar_excel(df, nombre_hoja="Datos filtrados"):
             "border": 1
         })
 
-        formato_porcentaje = workbook.add_format({"num_format": "0.00%"})
-        formato_numero = workbook.add_format({"num_format": "#,##0"})
+        formato_porcentaje = workbook.add_format({
+            "num_format": "0.00%",
+            "border": 1
+        })
+
+        formato_numero = workbook.add_format({
+            "num_format": "#,##0",
+            "border": 1
+        })
+
+        formato_texto = workbook.add_format({
+            "border": 1
+        })
+
+        formato_verde = workbook.add_format({
+            "bg_color": COLOR_VERDE,
+            "border": 1
+        })
+
+        formato_naranja = workbook.add_format({
+            "bg_color": COLOR_NARANJA,
+            "border": 1
+        })
+
+        formato_rojo = workbook.add_format({
+            "bg_color": COLOR_ROJO,
+            "border": 1
+        })
+
+        formato_verde_pct = workbook.add_format({
+            "bg_color": COLOR_VERDE,
+            "num_format": "0.00%",
+            "border": 1
+        })
+
+        formato_naranja_pct = workbook.add_format({
+            "bg_color": COLOR_NARANJA,
+            "num_format": "0.00%",
+            "border": 1
+        })
+
+        formato_rojo_pct = workbook.add_format({
+            "bg_color": COLOR_ROJO,
+            "num_format": "0.00%",
+            "border": 1
+        })
+
+        formato_verde_num = workbook.add_format({
+            "bg_color": COLOR_VERDE,
+            "num_format": "#,##0",
+            "border": 1
+        })
+
+        formato_naranja_num = workbook.add_format({
+            "bg_color": COLOR_NARANJA,
+            "num_format": "#,##0",
+            "border": 1
+        })
+
+        formato_rojo_num = workbook.add_format({
+            "bg_color": COLOR_ROJO,
+            "num_format": "#,##0",
+            "border": 1
+        })
 
         for col_num, value in enumerate(df.columns.values):
             worksheet.write(0, col_num, value, formato_titulo)
             ancho = min(max(len(str(value)) + 4, 14), 55)
             worksheet.set_column(col_num, col_num, ancho)
 
-        for idx, col in enumerate(df.columns):
-            if "%" in col:
-                worksheet.set_column(idx, idx, 14, formato_porcentaje)
+        columnas = list(df.columns)
 
-            if col in ["Meta", "Avance", "Pendiente"] or col.title() in [m.title() for m in MESES]:
-                worksheet.set_column(idx, idx, 14, formato_numero)
+        for row_idx, (_, row) in enumerate(df.iterrows(), start=1):
+            nivel = limpiar_texto(row.get("Nivel cumplimiento", ""))
+
+            if "🟢" in nivel:
+                fmt_base = formato_verde
+                fmt_pct = formato_verde_pct
+                fmt_num = formato_verde_num
+            elif "🟠" in nivel:
+                fmt_base = formato_naranja
+                fmt_pct = formato_naranja_pct
+                fmt_num = formato_naranja_num
+            else:
+                fmt_base = formato_rojo
+                fmt_pct = formato_rojo_pct
+                fmt_num = formato_rojo_num
+
+            for col_idx, col in enumerate(columnas):
+                valor = row.get(col, "")
+
+                if col == "% Avance":
+                    worksheet.write_number(row_idx, col_idx, float(valor), fmt_pct)
+
+                elif col in ["Meta", "Avance", "Pendiente"] or col in [m.title() for m in MESES]:
+                    worksheet.write_number(row_idx, col_idx, float(valor), fmt_num)
+
+                else:
+                    worksheet.write(row_idx, col_idx, valor, fmt_base)
 
         worksheet.autofilter(0, 0, len(df), len(df.columns) - 1)
         worksheet.freeze_panes(1, 0)
@@ -307,6 +422,9 @@ def generar_excel(df, nombre_hoja="Datos filtrados"):
     return salida
 
 
+# =========================================================
+# EXPORTACIÓN PDF CON COLORES
+# =========================================================
 def generar_pdf(df, titulo="Reporte de datos filtrados"):
     salida = io.BytesIO()
 
@@ -383,18 +501,21 @@ def generar_pdf(df, titulo="Reporte de datos filtrados"):
 
     tabla = Table(data, repeatRows=1)
 
-    tabla.setStyle(TableStyle([
+    estilos = [
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor(COLOR_AZUL)),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
         ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
         ("FONTSIZE", (0, 0), (-1, 0), 7),
         ("GRID", (0, 0), (-1, -1), 0.25, colors.lightgrey),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [
-            colors.white,
-            colors.HexColor("#F8FAFC")
-        ]),
-    ]))
+    ]
+
+    if "Nivel cumplimiento" in tabla_df.columns:
+        for i, (_, row) in enumerate(tabla_df.iterrows(), start=1):
+            color_fila = color_por_nivel(row.get("Nivel cumplimiento", ""))
+            estilos.append(("BACKGROUND", (0, i), (-1, i), colors.HexColor(color_fila)))
+
+    tabla.setStyle(TableStyle(estilos))
 
     elementos.append(tabla)
 
@@ -414,6 +535,9 @@ def generar_pdf(df, titulo="Reporte de datos filtrados"):
     return salida
 
 
+# =========================================================
+# INTERFAZ PRINCIPAL
+# =========================================================
 st.title("📊 Lector de Avances por Delegación, Programa y Nivel Nacional")
 
 st.caption(
@@ -639,16 +763,8 @@ try:
     st.subheader("📋 Datos filtrados")
 
     def color_cumplimiento(row):
-        nivel = row.get("Nivel cumplimiento", "")
-
-        if "🟢" in nivel:
-            color = "background-color: #DCFCE7"
-        elif "🟠" in nivel:
-            color = "background-color: #FFEDD5"
-        else:
-            color = "background-color: #FEE2E2"
-
-        return [color] * len(row)
+        color = color_por_nivel(row.get("Nivel cumplimiento", ""))
+        return [f"background-color: {color}"] * len(row)
 
     vista = df_filtrado.copy()
 
