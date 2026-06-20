@@ -34,7 +34,10 @@ st.markdown(
     <style>
     .main {{ background-color: #FFFFFF; }}
     .block-container {{ padding-top: 1.5rem; }}
-    h1, h2, h3 {{ color: {COLOR_AZUL}; }}
+
+    h1, h2, h3 {{
+        color: {COLOR_AZUL};
+    }}
 
     div[data-testid="stMetric"] {{
         background-color: {COLOR_GRIS};
@@ -64,8 +67,10 @@ def limpiar_texto(valor):
 def limpiar_numero(valor):
     if pd.isna(valor) or valor == "":
         return 0
+
     if isinstance(valor, str):
         valor = valor.replace("%", "").replace(",", ".").strip()
+
     try:
         return float(valor)
     except Exception:
@@ -74,15 +79,18 @@ def limpiar_numero(valor):
 
 def normalizar_columnas(cols):
     nuevas = []
+
     for c in cols:
         c = limpiar_texto(c).upper()
         c = re.sub(r"\s+", " ", c)
         nuevas.append(c)
+
     return nuevas
 
 
 def detectar_tipo_libro(archivo):
     xl = pd.ExcelFile(archivo)
+
     for hoja in xl.sheet_names:
         muestra = pd.read_excel(archivo, sheet_name=hoja, header=None, nrows=3)
         texto = " ".join(muestra.astype(str).fillna("").values.flatten()).upper()
@@ -98,8 +106,10 @@ def detectar_tipo_libro(archivo):
 
 def nombre_delegacion_desde_hoja(nombre_hoja):
     nombre = limpiar_texto(nombre_hoja)
+
     if nombre.upper().startswith("TOTAL"):
         return nombre
+
     return nombre
 
 
@@ -132,6 +142,7 @@ def leer_detalle_regional(archivo):
 
         for i in range(min(10, len(raw))):
             fila = " ".join(raw.iloc[i].astype(str).fillna("").str.upper().tolist())
+
             if "PROGRAMA" in fila and "META" in fila:
                 fila_header = i
                 break
@@ -207,6 +218,7 @@ def leer_resumen_nacional(archivo):
 
         for i in range(min(8, len(raw))):
             fila = " ".join(raw.iloc[i].astype(str).fillna("").str.upper().tolist())
+
             if ("CÓDIGO" in fila or "CODIGO" in fila) and "DELEGACIÓN" in fila:
                 fila_header = i
                 break
@@ -675,6 +687,18 @@ try:
             lambda x: f"{x:.2%}"
         )
 
+    for col in ["Meta", "Avance", "Pendiente"]:
+        if col in vista.columns:
+            vista[col] = vista[col].map(
+                lambda x: f"{x:,.0f}"
+            )
+
+    for mes in [m.title() for m in MESES]:
+        if mes in vista.columns:
+            vista[mes] = vista[mes].map(
+                lambda x: f"{x:,.0f}"
+            )
+
     st.dataframe(
         vista.style.apply(color_cumplimiento, axis=1),
         use_container_width=True,
@@ -751,9 +775,16 @@ try:
         )
 
         resumen_nivel_vista = resumen_nivel.copy()
+
         resumen_nivel_vista["% Avance"] = resumen_nivel_vista["% Avance"].map(
             lambda x: f"{x:.2%}"
         )
+
+        for col in ["Meta", "Avance", "Pendiente", "Registros"]:
+            if col in resumen_nivel_vista.columns:
+                resumen_nivel_vista[col] = resumen_nivel_vista[col].map(
+                    lambda x: f"{x:,.0f}"
+                )
 
         st.dataframe(
             resumen_nivel_vista,
