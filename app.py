@@ -11,9 +11,6 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 
-# =========================================================
-# CONFIGURACIÓN GENERAL
-# =========================================================
 st.set_page_config(
     page_title="Lector de Avances PAO / Programas",
     page_icon="📊",
@@ -55,9 +52,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# =========================================================
-# FUNCIONES DE LIMPIEZA Y DETECCIÓN
-# =========================================================
+
 def limpiar_texto(valor):
     if pd.isna(valor):
         return ""
@@ -122,9 +117,6 @@ def clasificar_cumplimiento(porc):
         return "🔴 Crítico"
 
 
-# =========================================================
-# LECTURA DEL EXCEL REGIONAL / DETALLADO
-# =========================================================
 def leer_detalle_regional(archivo):
     xl = pd.ExcelFile(archivo)
     registros = []
@@ -201,9 +193,6 @@ def leer_detalle_regional(archivo):
     return pd.DataFrame(registros)
 
 
-# =========================================================
-# LECTURA DEL EXCEL NACIONAL / RESUMEN
-# =========================================================
 def leer_resumen_nacional(archivo):
     xl = pd.ExcelFile(archivo)
     registros = []
@@ -278,9 +267,6 @@ def leer_resumen_nacional(archivo):
     return pd.DataFrame(registros)
 
 
-# =========================================================
-# EXPORTACIONES
-# =========================================================
 def generar_excel(df, nombre_hoja="Datos filtrados"):
     salida = io.BytesIO()
 
@@ -428,9 +414,6 @@ def generar_pdf(df, titulo="Reporte de datos filtrados"):
     return salida
 
 
-# =========================================================
-# INTERFAZ PRINCIPAL
-# =========================================================
 st.title("📊 Lector de Avances por Delegación, Programa y Nivel Nacional")
 
 st.caption(
@@ -494,9 +477,6 @@ try:
         f"Registros detectados: {len(df):,}"
     )
 
-    # =====================================================
-    # FILTROS
-    # =====================================================
     st.subheader("🔎 Filtros")
 
     col1, col2, col3, col4 = st.columns(4)
@@ -610,9 +590,6 @@ try:
 
         df_filtrado = df_filtrado[mascara]
 
-    # =====================================================
-    # FILTRO POR MES
-    # =====================================================
     columnas_meses_presentes = [
         m.title() for m in MESES
         if m.title() in df_filtrado.columns
@@ -640,9 +617,6 @@ try:
                     df_filtrado[meses_sel].sum(axis=1) > 0
                 ]
 
-    # =====================================================
-    # MÉTRICAS
-    # =====================================================
     st.subheader("📌 Resumen")
 
     total_meta = df_filtrado["Meta"].sum()
@@ -662,17 +636,14 @@ try:
 
     st.metric("Pendiente", f"{total_pendiente:,.0f}")
 
-    # =====================================================
-    # TABLA
-    # =====================================================
     st.subheader("📋 Datos filtrados")
 
     def color_cumplimiento(row):
-        porc = row.get("% Avance Num", 0)
+        nivel = row.get("Nivel cumplimiento", "")
 
-        if porc >= 0.40:
+        if "🟢" in nivel:
             color = "background-color: #DCFCE7"
-        elif porc >= 0.35:
+        elif "🟠" in nivel:
             color = "background-color: #FFEDD5"
         else:
             color = "background-color: #FEE2E2"
@@ -680,7 +651,6 @@ try:
         return [color] * len(row)
 
     vista = df_filtrado.copy()
-    vista["% Avance Num"] = vista["% Avance"]
 
     if "% Avance" in vista.columns:
         vista["% Avance"] = vista["% Avance"].map(
@@ -705,9 +675,6 @@ try:
         hide_index=True
     )
 
-    # =====================================================
-    # VISUALIZACIÓN
-    # =====================================================
     st.subheader("📊 Visualización rápida")
 
     c1, c2 = st.columns(2)
@@ -749,9 +716,6 @@ try:
                     avance_region.set_index("Región / Hoja")[["Meta", "Avance"]]
                 )
 
-    # =====================================================
-    # RESUMEN POR CUMPLIMIENTO
-    # =====================================================
     st.subheader("🚦 Resumen por nivel de cumplimiento")
 
     resumen_nivel = df_filtrado.groupby(
@@ -792,9 +756,6 @@ try:
             hide_index=True
         )
 
-    # =====================================================
-    # DESCARGAS
-    # =====================================================
     st.subheader("⬇️ Descargas")
 
     col_excel, col_pdf = st.columns(2)
